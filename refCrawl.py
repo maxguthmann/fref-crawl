@@ -4,15 +4,23 @@ import time
 import json
 import threading
 import csv
-import pandas
+from pandas import *
 import numpy as np
 import statistics
 from bs4 import BeautifulSoup
+import scipy.stats
 
 baseUrl = 'https://www.pro-football-reference.com/'
 
 stats = {}
 ind = []
+
+def mean_confidence_interval(data, confidence=0.95):
+    a = 1.0 * np.array(data)
+    n = len(a)
+    m, se = np.mean(a), scipy.stats.sem(a)
+    h = se * scipy.stats.t.ppf((1 + confidence) / 2., n-1)
+    return m, m-h, m+h
 
 def calculatePoints(game):
     points = 0
@@ -61,7 +69,8 @@ def individualDownload(a, count):
     fPoints = fPoints[-16:]
 
     std = np.std(fPoints, ddof=1)
-    ind.append([name, statistics.mean(fPoints), std, statistics.mean(fPoints)/std,])
+    mean, lower, upper = mean_confidence_interval(fPoints)
+    ind.append([name, mean, lower, upper])
 
 
 
@@ -78,22 +87,29 @@ def main():
         tbod = t.find('tbody')
         tr = tbod.find_all('tr')
         count += len(tr)
+        count2 = 0
         for row in tr:
+            count2 += 1
+            if count2 == 50:
+                break
             a = row.find_all('a')
             if len(a) > 0:
               el = row.select("td[data-stat='pos']")[0].text
-              if el == 'RB' or el == 'rb':
-                t = threading.Thread(target=individualDownload, args=(a, count))
-                t.start()
-                threads.append(t)
+              #if el == 'RB' or el == 'rb':
+              t = threading.Thread(target=individualDownload, args=(a, count))
+              t.start()
+              threads.append(t)
 
 
     for t in threads:
         t.join()
 
-    ind.sort(key=lambda x: x[1], reverse=True)
-    for row in ind:
-        print(row)
+    ind.sort(key=lambda x: x[2], reverse=True)
+    indexCounter = 0
+    print(DataFrame(ind))
+    #for row in ind:
+    #    print(str(indexCounter) + str(row))
+    #    indexCounter += 1
 
 if __name__ == "__main__":
     main()
