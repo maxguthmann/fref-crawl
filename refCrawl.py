@@ -49,13 +49,9 @@ def individualDownload(a, count):
     a = a[0]
     href = a['href']
     name = a.text
+
     lock.acquire()
-    #try:
-    #if(len(name) != 1):
-    #    print(name)
     c.execute('SELECT * FROM games WHERE name = ?', [name])
-    #except:
-    #    print(name)
     conn.commit()
     lock.release()
     if len(c.fetchall()) != 0:
